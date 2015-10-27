@@ -1,6 +1,7 @@
 package praktikum1.smtp_client;
 
 import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -15,6 +16,8 @@ import java.util.Properties;
 import javax.net.SocketFactory;
 import javax.net.ssl.SSLSocketFactory;
 
+import praktikum1.MailProperties;
+
 public class MailClient {
 	private Socket _socket;
 	private InputStream _in;
@@ -24,13 +27,24 @@ public class MailClient {
 	private Properties _properties;
 	private final static boolean loging = true;
 	
+	private final static String EHLO = "EHLO ";
+	private final static String AUTH_LOGIN = "AUTH LOGIN";
+	private final static String MAIL_FROM = "MAIL FROM: ";
+	private final static String RECIPIENT_TO = "RCPT TO: ";
+	private final static String DATA = "DATA";
+	private final static String QUIT = "QUIT";
+	private final static String MESSAGE_TERMINATOR = ".";
+	
+	
+	
 	public MailClient(Properties properties) throws IOException {
 		try {
 			_properties = properties;
 			
-			String remoteHostString = properties.getProperty("hostname");
-			int remotePort = Integer.parseInt(properties.getProperty("portnumber"));
+			String remoteHostString = properties.getProperty(MailProperties.HOSTNAME);
+			int remotePort = Integer.parseInt(properties.getProperty(MailProperties.PORTNUMBER));
 			InetAddress remoteHost = InetAddress.getByName(remoteHostString);
+			
 			_socket = (remotePort == 465)
 				? SSLSocketFactory.getDefault().createSocket(remoteHost, remotePort)
 				: SocketFactory.getDefault().createSocket(remoteHost, remotePort);
@@ -40,9 +54,6 @@ public class MailClient {
 			_writer = new PrintWriter(_out, true);
 			_reader = new BufferedReader(new InputStreamReader(_in));
 			sendMail();
-			
-				
-				
 		} catch(Exception e) {
 			e.printStackTrace();
 		}
@@ -52,40 +63,45 @@ public class MailClient {
 	private void sendMail() throws UnknownHostException {
 
 		String localHostString = _socket.getLocalAddress().getHostName();
-		int localPort = Integer.parseInt(_properties.getProperty("portnumber"));
+		int localPort = Integer.parseInt(_properties.getProperty(MailProperties.PORTNUMBER));
 		InetAddress localHost = InetAddress.getByName(localHostString);
-			
-
-
-		String username = _properties.getProperty("username");
-		String password = _properties.getProperty("password");
+		
+		String username = _properties.getProperty(MailProperties.USERNAME);
+		String password = _properties.getProperty(MailProperties.PASSWORD);
 		
 		String base64EncodedUsername = new String(Base64.getEncoder().encode(username.getBytes()));
 		String base64EncodedPassword = new String(Base64.getEncoder().encode(password.getBytes()));
 		
-		sendMessage("EHLO " + localHostString);
+		sendMessage(EHLO + localHostString);
 		receiveMessage();
-		sendMessage("AUTH LOGIN");
+		sendMessage(AUTH_LOGIN);
 		receiveMessage();
 		sendMessage(base64EncodedUsername);
 		receiveMessage();
 		sendMessage(base64EncodedPassword);
 		receiveMessage();
-		sendMessage("MAIL FROM: " + _properties.getProperty("mailaddress"));
+		sendMessage(MAIL_FROM + _properties.getProperty(MailProperties.MAILADDRESS));
 		receiveMessage();
-		sendMessage("RCPT TO: " + _properties.getProperty("recipient"));
+		sendMessage(RECIPIENT_TO + _properties.getProperty(MailProperties.RECIPIENT));
 		receiveMessage();
-		sendMessage("DATA");
+		sendMessage(DATA);
 		receiveMessage();
-		sendMessage("Subject: Testemail");
+		sendMailBody(_properties.getProperty(MailProperties.MAILBODY));
 		receiveMessage();
-		sendMessage("Hallo, was läuft?");
+		sendMessage(QUIT);
 		receiveMessage();
-		sendMessage(".");
-		receiveMessage();
-		sendMessage("QUIT");
-		receiveMessage();
-		
+	}
+	
+	private void sendMailBody(String mailFile) {
+		try(BufferedReader mailBodyReader = new BufferedReader(new FileReader(mailFile))){
+			String currentLine = "";
+			while((currentLine = mailBodyReader.readLine()) != null ) {
+				sendMessage(currentLine);
+			}
+			sendMessage(MESSAGE_TERMINATOR);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	private void sendMessage(String message) {
@@ -94,26 +110,23 @@ public class MailClient {
 		System.err.println(logmessage);
 		if(loging)
 			log(logmessage);
-//		try {
-//			Thread.currentThread().sleep(100); //TODO fix race condition and remove this.
-//		} catch (InterruptedException e) {}
 	}
 	
 	private void receiveMessage() {
 			try {
-				while(_reader.ready()) {
+				do {
 					String message = _reader.readLine();
 					String logmessage = "[RECEIVE] : " + message;
 					System.err.println(logmessage);
 					if(loging)
 						log(logmessage);
-				}
+				} while(_reader.ready());
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 	}
 	
 	private void log(String message) {
-		
+		//TODO: implement this.
 	}
 }
