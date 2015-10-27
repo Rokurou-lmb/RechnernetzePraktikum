@@ -2,6 +2,7 @@ package praktikum1.smtp_client;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -25,7 +26,8 @@ public class MailClient {
 	private OutputStream _out;
 	private PrintWriter _writer;
 	private Properties _properties;
-	private final static boolean loging = true;
+	private final boolean _logging;
+	private final String _logfile;
 	
 	private final static String EHLO = "EHLO ";
 	private final static String AUTH_LOGIN = "AUTH LOGIN";
@@ -38,6 +40,8 @@ public class MailClient {
 	
 	
 	public MailClient(Properties properties) throws IOException {
+		_logging = Boolean.parseBoolean(_properties.getProperty(MailProperties.LOGGING));
+		_logfile = _properties.getProperty(MailProperties.LOGFILE);
 		try {
 			_properties = properties;
 			
@@ -108,7 +112,7 @@ public class MailClient {
 		_writer.println(message);
 		String logmessage = "[SEND]    : " + message;
 		System.err.println(logmessage);
-		if(loging)
+		if(_logging)
 			log(logmessage);
 	}
 	
@@ -118,7 +122,7 @@ public class MailClient {
 					String message = _reader.readLine();
 					String logmessage = "[RECEIVE] : " + message;
 					System.err.println(logmessage);
-					if(loging)
+					if(_logging)
 						log(logmessage);
 				} while(_reader.ready());
 			} catch (IOException e) {
@@ -127,6 +131,11 @@ public class MailClient {
 	}
 	
 	private void log(String message) {
+		try {
+			FileWriter logWriter = new FileWriter(_logfile);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		//TODO: implement this.
 	}
 }

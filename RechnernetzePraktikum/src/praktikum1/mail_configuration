@@ -4,3 +4,5 @@ password	: Aufgabe1
 hostname	: mailgate.informatik.haw-hamburg.de
 portnumber	: 25
 mailbody	: src/praktikum1/testmail
+logging		: true
+logfile		: src/praktikum1/logfile

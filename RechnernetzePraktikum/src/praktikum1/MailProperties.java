@@ -8,4 +8,6 @@ public interface MailProperties {
 	String PORTNUMBER = "portnumber";
 	String RECIPIENT = "recipient";
 	String MAILBODY = "mailbody";
+	String LOGGING = "logging";
+	String LOGFILE = "logfile";
 }
