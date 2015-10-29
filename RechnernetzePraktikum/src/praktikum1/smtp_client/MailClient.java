@@ -12,7 +12,6 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.List;
@@ -77,7 +76,8 @@ public class MailClient {
 		
 		String base64EncodedUsername = new String(Base64.getEncoder().encode(username.getBytes()));
 		String base64EncodedPassword = new String(Base64.getEncoder().encode(password.getBytes()));
-		
+
+		receiveMessage();
 		sendMessage(EHLO + localHostString);
 		receiveMessage();
 		sendMessage(AUTH_LOGIN);
@@ -98,27 +98,28 @@ public class MailClient {
 		receiveMessage();
 	}
 	
-	private void sendMailBody(String mailFile, List<String> mailAttatchments) {
+	private void sendMailBody(String mailFile, List<String> mailAttachments) {
 		try(BufferedReader mailBodyReader = new BufferedReader(new FileReader(mailFile))){
 			String currentLine = "";
 			while((currentLine = mailBodyReader.readLine()) != null ) {
+				if(currentLine.startsWith(MESSAGE_TERMINATOR)) //Transparency
+					currentLine = MESSAGE_TERMINATOR + currentLine;
 				sendMessage(currentLine);
 			}
-			sendMailAttatchment(mailAttatchments);
+			sendMailAttachment(mailAttachments);
 			sendMessage(MESSAGE_TERMINATOR);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
 	
-	private void sendMailAttatchment(List<String> mailAttachments) {
+	private void sendMailAttachment(List<String> mailAttachments) {
 		for (String mailAttatchmentFile : mailAttachments) {
 			sendMessage("--=__=");
 			try(BufferedReader mailAttatchmentReader = new BufferedReader(new FileReader(mailAttatchmentFile))) {
 				sendMessage("Content-Transfer-Encoding: base64");
 				sendMessage("Content-Type: image/png");
-				sendMessage("Content-Disosition: attachment; filename=3.png");
-				sendMessage("Content-Type: image/png");
+				sendMessage("Content-Disposition: attachment; filename=3.png");
 				sendMessage("");
 				byte[] byteFile = Files.readAllBytes(Paths.get(mailAttatchmentFile));
 				String encodedString = Base64.getMimeEncoder().encodeToString(byteFile);
