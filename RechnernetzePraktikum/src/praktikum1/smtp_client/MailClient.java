@@ -11,7 +11,11 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Base64;
+import java.util.List;
 import java.util.Properties;
 
 import javax.net.SocketFactory;
@@ -39,11 +43,11 @@ public class MailClient {
 	
 	
 	
-	public MailClient(Properties properties) throws IOException {
+	public MailClient(Properties properties, List<String> mailAttachments) throws IOException {
+		_properties = properties;
 		_logging = Boolean.parseBoolean(_properties.getProperty(MailProperties.LOGGING));
 		_logfile = _properties.getProperty(MailProperties.LOGFILE);
 		try {
-			_properties = properties;
 			
 			String remoteHostString = properties.getProperty(MailProperties.HOSTNAME);
 			int remotePort = Integer.parseInt(properties.getProperty(MailProperties.PORTNUMBER));
@@ -57,18 +61,16 @@ public class MailClient {
 			_in = _socket.getInputStream();
 			_writer = new PrintWriter(_out, true);
 			_reader = new BufferedReader(new InputStreamReader(_in));
-			sendMail();
+			sendMail(mailAttachments);
 		} catch(Exception e) {
 			e.printStackTrace();
 		}
 
 	}
 	
-	private void sendMail() throws UnknownHostException {
+	private void sendMail(List<String> mailAttachments) throws UnknownHostException {
 
 		String localHostString = _socket.getLocalAddress().getHostName();
-		int localPort = Integer.parseInt(_properties.getProperty(MailProperties.PORTNUMBER));
-		InetAddress localHost = InetAddress.getByName(localHostString);
 		
 		String username = _properties.getProperty(MailProperties.USERNAME);
 		String password = _properties.getProperty(MailProperties.PASSWORD);
@@ -90,21 +92,40 @@ public class MailClient {
 		receiveMessage();
 		sendMessage(DATA);
 		receiveMessage();
-		sendMailBody(_properties.getProperty(MailProperties.MAILBODY));
+		sendMailBody(_properties.getProperty(MailProperties.MAILBODY), mailAttachments);
 		receiveMessage();
 		sendMessage(QUIT);
 		receiveMessage();
 	}
 	
-	private void sendMailBody(String mailFile) {
+	private void sendMailBody(String mailFile, List<String> mailAttatchments) {
 		try(BufferedReader mailBodyReader = new BufferedReader(new FileReader(mailFile))){
 			String currentLine = "";
 			while((currentLine = mailBodyReader.readLine()) != null ) {
 				sendMessage(currentLine);
 			}
+			sendMailAttatchment(mailAttatchments);
 			sendMessage(MESSAGE_TERMINATOR);
 		} catch (IOException e) {
 			e.printStackTrace();
+		}
+	}
+	
+	private void sendMailAttatchment(List<String> mailAttachments) {
+		for (String mailAttatchmentFile : mailAttachments) {
+			sendMessage("--=__=");
+			try(BufferedReader mailAttatchmentReader = new BufferedReader(new FileReader(mailAttatchmentFile))) {
+				sendMessage("Content-Transfer-Encoding: base64");
+				sendMessage("Content-Type: image/png");
+				sendMessage("Content-Disosition: attachment; filename=3.png");
+				sendMessage("Content-Type: image/png");
+				sendMessage("");
+				byte[] byteFile = Files.readAllBytes(Paths.get(mailAttatchmentFile));
+				String encodedString = Base64.getMimeEncoder().encodeToString(byteFile);
+				sendMessage(encodedString);
+			} catch(IOException e) {
+				
+			}
 		}
 	}
 	
@@ -131,11 +152,10 @@ public class MailClient {
 	}
 	
 	private void log(String message) {
-		try {
-			FileWriter logWriter = new FileWriter(_logfile);
+		try (FileWriter logWriter = new FileWriter(_logfile, true)){
+			logWriter.write(message + "\n");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		//TODO: implement this.
 	}
 }

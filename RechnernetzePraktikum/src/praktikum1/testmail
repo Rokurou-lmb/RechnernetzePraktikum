@@ -1,2 +1,10 @@
 Subject: Testemail
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="=__="
+
+--=__=
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
+
 Hallo, was läuft?
