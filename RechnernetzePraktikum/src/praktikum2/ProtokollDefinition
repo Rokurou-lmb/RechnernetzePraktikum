@@ -1,0 +1,51 @@
+Verbindungsaufbau zwischen Client & Server:
+
+C: HELLO LMBCHAT
+S: NICKNAME?
+C: <NICKNAME>
+S: ACCEPTED / REFUSED <NICKNAME_REFUSAL_CODE>(->5)
+
+Bevor eine erfolgreiche Verbindung aufgebaut wurde kann die Verbindung durch einen "kurzen" Timeout beendet werden.
+Bei Nickname-Refusal erwartet der Server einen neuen Nicknamen.
+NICKNAME_REFUSAL_CODE: 42 - Name already taken 
+					   1337 - Name not allowed
+Der Client wird in die Verteilerliste aufgenommen und sein Nickname im Mapping hinterlegt.
+
+
+-----------------------------------------------------------------------------------
+
+Verbindungsabbau zwischen Client & Server
+
+C: QUIT
+S: GOODBYE, RELEASING <NICKNAME>
+
+Client wird aus der Verteilerliste des Servers entfernt und sein Nickname wird wieder aus dem Mapping entfernt
+
+-----------------------------------------------------------------------------------
+
+Nachrichtenaustausch vom Client zum Server
+
+C: MESSAGE
+S: OK
+C: TIMESTAMP <HH:MM:SS>
+C: DATA <MESSAGE_DATA>
+C: FINISHED
+S: MESSAGE_ACCEPTED / MESSAGE_REFUSED <MESSAGE_REFUSAL_CODE>
+
+MESSAGE_REFUSAL_CODE: 7 - Timestamp invalid
+
+Nachricht wird vom Server an alle Clients in der Verteilerliste versendet
+
+-----------------------------------------------------------------------------------
+
+Nachrichtenaustausch vom Server zum Client
+
+S: MESSAGE
+C: OK
+S: NICKNAME <NICKNAME>
+S: TIMESTAMP <HH:MM:SS>
+S: DATA <MESSAGE DATA>
+S: FINISHED
+C: MESSAGE_ACCEPTED
+
+Nachricht wird vom Client im Dialog dargestellt.
