@@ -1,9 +1,10 @@
 package praktikum2;
 
-import java.util.concurrent.TimeUnit;
+import java.sql.Date;
+import java.text.SimpleDateFormat;
 
 public class Message implements Comparable<Message>{
-	private long _timestamp; //TODO: Save Timestamp as String instead of long
+	private long _timestamp;
 	private String _message;
 	private String _sender;
 	
@@ -17,11 +18,10 @@ public class Message implements Comparable<Message>{
 		_sender = sender;
 	}
 	
-	public String getTimeStampAsString() {//TODO: doesn't seem to work as intended
-		String timestamp = String.format("%02d:%02d:%02d", TimeUnit.MILLISECONDS.toHours(_timestamp),
-				TimeUnit.MILLISECONDS.toMinutes(_timestamp) % TimeUnit.HOURS.toMinutes(1),
-				TimeUnit.MILLISECONDS.toSeconds(_timestamp) % TimeUnit.MINUTES.toSeconds(1));
-		return timestamp;
+	public String getTimeStampAsString() {//TODO test this
+		Date timestampDate = new Date(_timestamp);
+		SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
+		return dateFormat.format(timestampDate);
 	}
 	
 	public long getTimeStamp() {

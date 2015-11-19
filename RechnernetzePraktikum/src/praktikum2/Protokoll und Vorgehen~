@@ -24,7 +24,7 @@ Client wird aus der Verteilerliste des Servers entfernt und sein Nickname wird w
 
 -----------------------------------------------------------------------------------
 
-Nachrichtenaustausch vom Client zum Server (Umbauen zu UDP mit verbindungslosem Aufbau, direkt die gesammte Message(Timestamp, Nickname, Data) übertragen von Client zu Client)
+Nachrichtenaustausch vom Client zum Server
 
 C: MESSAGE
 S: OK

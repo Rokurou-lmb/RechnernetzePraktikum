@@ -1,11 +1,10 @@
-package praktikum2.chat_server;
+package praktikum2.lmb_chat_server;
 
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
-import praktikum2.Message;
 
 public class ChatServer {
 	private Set<String> _nicknames;
@@ -31,19 +30,16 @@ public class ChatServer {
 		
 	}
 	
-	//TODO: broadcasting Messages should happen in this context rather than inside the individual Connection
-	public void broadcastMessage(Message message) {
-//		for(ClientConnection clientConnectionThread : _verteiler) {
-//			
-//		}
-	}
-	
 	public void registerClientConnection(ClientConnection newClientConnection) {
 		_verteiler.add(newClientConnection);
 	}
 	
 	public Set<ClientConnection> getRegisteredConnections() {
 		return Collections.unmodifiableSet(_verteiler);
+	}
+	
+	public Set<String> getRegisteredNicknames() {
+		return Collections.unmodifiableSet(_nicknames);
 	}
 	
 	public void unregisterNickname(String nickname) {

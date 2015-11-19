@@ -1,4 +1,4 @@
-package praktikum2.chat_client;
+package praktikum2.lmb_chat_client;
 
 import java.awt.BorderLayout;
 import java.awt.Container;
@@ -16,9 +16,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
+
 import javax.net.SocketFactory;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -27,6 +25,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTextField;
+
 import praktikum2.Message;
 
 public class ChatClient extends JFrame {
@@ -39,10 +38,14 @@ public class ChatClient extends JFrame {
 	private Socket _socket;
 	private PrintWriter _writer;
 	private BufferedReader _reader;
+	private boolean _clientRunning;
+	private ClientBroadcastThread _clientBroadcastThread; //TODO: implements there Threads and initialize them
+	private ClientReceiveThread _clientReceiveThread;
 	
+	//TODO Add a second JSplitpane to encapsulate a UserList on the Left side
 	private Container _container;
 	private JSplitPane _ioContainer;
-	private JScrollPane _output;
+	public JScrollPane _output;
 	private JPanel _inputContainer;
 	private JTextField _input;
 	private JButton _sendButton;
@@ -51,6 +54,7 @@ public class ChatClient extends JFrame {
 	
 	public ChatClient() throws IOException {
 		super("LMB Chat Client");
+		_clientRunning = true;
 		
 		setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 		addWindowListener(new WindowAdapter() {
@@ -114,8 +118,11 @@ public class ChatClient extends JFrame {
 		_container.add(_ioContainer, BorderLayout.CENTER);
 		
 		openConnection();
-		
 		setVisible(true);
+		
+		while(_clientRunning) {
+			receiveIncomingRequests();
+		}
 	}
 	
 	private void openConnection() throws IOException {
@@ -129,11 +136,16 @@ public class ChatClient extends JFrame {
 			e.printStackTrace();
 		}
 		while(!(readResponseFromServer().equals("NICKNAME?")));
-		String response;
+		String dialogMessage = "Please enter your preferred nickname: ";
+		String response = "";
 		do {
-			_nickname = (String)JOptionPane.showInputDialog(_ioContainer, "Please enter your preferred nickname: ", "Setup", JOptionPane.OK_OPTION);
+			if(!response.isEmpty()) {
+				dialogMessage = response.substring(8);
+			}
+			_nickname = (String)JOptionPane.showInputDialog(_ioContainer, dialogMessage, "Setup", JOptionPane.OK_OPTION);
 			sendRequestToServer("NICKNAME " + _nickname);
-		} while(!(response = readResponseFromServer()).matches("ACCEPTED, CONNECTED AS \\w*"));
+			response = readResponseFromServer();
+		} while(!response.matches("ACCEPTED, CONNECTED AS \\w*"));
 	}
 	
 	/**
@@ -151,38 +163,43 @@ public class ChatClient extends JFrame {
 		}
 	}
 	
-	private void showUserList() {
-		try {
-			Set<String> userSet;
-			userSet = getUserSet();
-			String message = "These are the currently active Users: " + _nickname;
-			for(String user : userSet) {
-				message += ", " + user;
+	private void receiveIncomingRequests() throws IOException {
+		boolean connectionRequired = true;
+		while(connectionRequired) {
+			String response = readResponseFromServer();
+			if(response.equals("MESSAGE")) {
+				
 			}
+		}
+	}
+	
+	private void showUserList() { //TODO: transmit user Ip and port to the client and broadcast from the client.
+		try {
+			String users;
+			users = getUserSet();
+			String message = "These are the currently active Users: " + users;
 			JOptionPane.showMessageDialog(_container, message, "Active Users", JOptionPane.INFORMATION_MESSAGE);
 		} catch(IOException e) {
 			e.printStackTrace();
 		}
-
 	}
 	
 	/**
 	 * Returns a set of the currently registered ChatClients represented with their Nicknames
-	 * @return Nicknames of currentyl registered ChatClients
+	 * @return Nicknames of currently registered ChatClients
 	 * @throws IOException 
 	 */
-	private Set<String> getUserSet() throws IOException {
-		Set<String> userSet = new HashSet<>();
+	private String getUserSet() throws IOException {
+		String users = "";
 		sendRequestToServer("USER?");
-		String request;
+		String response;
 		do {
-			request = readResponseFromServer();
-			if(request.startsWith("USER ")) {
-				String[] users = request.substring(5).split(",");
-				userSet.addAll(Arrays.asList(users));
+			response = readResponseFromServer();
+			if(response.startsWith("USER ")) {
+				 users += response.substring(5);
 			}
-		} while(!request.startsWith("FINISHED"));
-		return userSet;
+		} while(!response.startsWith("FINISHED"));
+		return users;
 	}
 	
 	/**
