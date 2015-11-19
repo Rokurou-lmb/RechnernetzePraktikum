@@ -1,15 +1,16 @@
 Verbindungsaufbau zwischen Client & Server:
 
-C: HELLO LMBCHAT
+//Verbindug über TCP-Sockets wurde aufgebaut
+
 S: NICKNAME?
-C: <NICKNAME>
-S: ACCEPTED / REFUSED <NICKNAME_REFUSAL_CODE>(->5)
+C: NICKNAME <NICKNAME> (Has to match "\w*")
+S: ACCEPTED, CONNECTED AS <NICKNAME> / REFUSED ERRORCODE <NICKNAME_REFUSAL_CODE>(->6)
 
 Bevor eine erfolgreiche Verbindung aufgebaut wurde kann die Verbindung durch einen "kurzen" Timeout beendet werden.
 Bei Nickname-Refusal erwartet der Server einen neuen Nicknamen.
 NICKNAME_REFUSAL_CODE: 42 - Name already taken 
 					   1337 - Name not allowed
-Der Client wird in die Verteilerliste aufgenommen und sein Nickname im Mapping hinterlegt.
+Der Client wird in die Verteilerliste aufgenommen und sein Nickname hinterlegt.
 
 
 -----------------------------------------------------------------------------------
@@ -28,9 +29,9 @@ Nachrichtenaustausch vom Client zum Server
 C: MESSAGE
 S: OK
 C: TIMESTAMP <HH:MM:SS>
-C: DATA <MESSAGE_DATA>
+C: DATA <MESSAGE_DATA> (*As long as the following messages start with DATA they're interpreted as part of the MESSAGE_DATA)
 C: FINISHED
-S: MESSAGE_ACCEPTED / MESSAGE_REFUSED <MESSAGE_REFUSAL_CODE>
+S: MESSAGE ACCEPTED / MESSAGE_REFUSED <MESSAGE_REFUSAL_CODE>
 
 MESSAGE_REFUSAL_CODE: 7 - Timestamp invalid
 
@@ -46,6 +47,17 @@ S: NICKNAME <NICKNAME>
 S: TIMESTAMP <HH:MM:SS>
 S: DATA <MESSAGE DATA>
 S: FINISHED
-C: MESSAGE_ACCEPTED
+C: MESSAGE ACCEPTED
 
-Nachricht wird vom Client im Dialog dargestellt.
+Nachricht wird vom Client im ChatFenster dargestellt.
+
+-----------------------------------------------------------------------------------
+
+Benutzerabfrage vom Client an den Server
+
+C: USER?
+S: USER <NICKNAME>(,<NICKNAME>)*
+S: FINISHED
+C: USERLIST ACCEPTED
+
+Nutzer werden im ChatFenster ausgegeben
