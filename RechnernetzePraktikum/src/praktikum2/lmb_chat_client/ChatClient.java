@@ -28,18 +28,19 @@ import javax.swing.JTextField;
 
 import praktikum2.Message;
 
+//TODO: Umbau auf UDP und broadcasten von Clients an Clients.
 public class ChatClient extends JFrame {
 
 	private static final long serialVersionUID = 1L;
 	
 	private String _remoteHost;
-	private final int _remotePort = 50000;
+	public final int _remotePort = 50000;
 	private String _nickname;
 	private Socket _socket;
 	private PrintWriter _writer;
 	private BufferedReader _reader;
 	private boolean _clientRunning;
-	private ClientBroadcastThread _clientBroadcastThread; //TODO: implements there Threads and initialize them
+	private ClientBroadcastThread _clientBroadcastThread; //TODO: implement these Threads and initialize them
 	private ClientReceiveThread _clientReceiveThread;
 	
 	//TODO Add a second JSplitpane to encapsulate a UserList on the Left side
