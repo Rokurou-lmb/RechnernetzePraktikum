@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
 class ClientConnection implements Runnable{
 	
 	private String _nickname;
-
+	
 	private Socket _socket;
 	private ChatServer _server;
 	private BufferedReader _inFromClient;
@@ -39,7 +39,7 @@ class ClientConnection implements Runnable{
 			_socket.close();
 		} catch(IOException e) {
 			System.err.println("Connection aborted by client!");
-			_server.unregisterNickname(_nickname);
+			_server.unregisterClient(this);
 		} finally {
 			_server._workerThreadsSem.release();
 		}
@@ -69,11 +69,11 @@ class ClientConnection implements Runnable{
 			if(request.equals("QUIT")) {
 				connectionRequired = false;
 				sendResponseToClient("GOODBYE, RELEASING " + _nickname);
-				_server.unregisterNickname(_nickname);
+				_server.unregisterClient(this);
 			} else if(request.equals("USER?")) {
 				sendUserList();
 				sendResponseToClient("FINISHED");
-				while(readRequestFromClient() != "USERLIST ACCEPTED"); //TODO Rethink if this part of the protocol is needed
+				while(!readRequestFromClient().equals("USERLIST ACCEPTED")); //TODO Rethink if this part of the protocol is needed
 			}
 		}
 	}

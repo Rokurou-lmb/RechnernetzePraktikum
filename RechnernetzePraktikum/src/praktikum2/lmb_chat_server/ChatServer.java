@@ -37,8 +37,10 @@ public class ChatServer {
 		return Collections.unmodifiableSet(_verteiler);
 	}
 	
-	public void unregisterNickname(String nickname) {
+	public void unregisterClient(ClientConnection clientConnection) {
+		String nickname = clientConnection.getNickname();
 		_nicknames.remove(nickname);
+		_verteiler.remove(clientConnection);
 	}
 
 	public boolean registerNickname(String nickname) {

@@ -3,17 +3,16 @@ package praktikum2.lmb_chat_client;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.util.Set;
-
+import java.util.Map;
 import praktikum2.Client;
 import praktikum2.Message;
 
 public class UDPMessageBroadcastRunnable implements Runnable{
 
 	private Message _message;
-	private Set<Client> _recipients;
+	private Map<String, Client> _recipients;
 	
-	public UDPMessageBroadcastRunnable(Set<Client> recipients, Message messageToBroadcast) {
+	public UDPMessageBroadcastRunnable(Map<String, Client> recipients, Message messageToBroadcast) {
 		_recipients = recipients;
 		_message = messageToBroadcast;
 	}
@@ -22,12 +21,13 @@ public class UDPMessageBroadcastRunnable implements Runnable{
 	public void run() {
 		try (DatagramSocket udpSocket = new DatagramSocket()){
 			String message = packMessage(_message);
-			byte[] messageBytes = message.getBytes();
-			int offset = 0; //TODO which offset to use?
-			int length = messageBytes.length; //TODO which length to use?
+			byte[] messageBytes = new byte[1024];
+			messageBytes = message.getBytes();
+			int offset = 0;
+			int length = messageBytes.length;
 			InetAddress address;
 			Integer portnumber;
-			for (Client recipient : _recipients) {
+			for (Client recipient : _recipients.values()) {
 				address = recipient.getIpAddress();
 				portnumber = recipient.getPortnumber();
 				DatagramPacket packet = new DatagramPacket(messageBytes, offset, length, address , portnumber);
