@@ -56,7 +56,7 @@ Nachricht wird vom Client im ChatFenster dargestellt.
 Benutzerabfrage vom Client an den Server
 
 C: USER?
-S: USER <NICKNAME>(,<NICKNAME>)*
+S: USER <NICKNAME>;<IP_ADDRESS>;<PORT>(,<NICKNAME>;<IP_ADDRESS>;<PORT>)*
 S: FINISHED
 C: USERLIST ACCEPTED
 

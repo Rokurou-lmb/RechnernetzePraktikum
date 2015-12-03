@@ -8,10 +8,9 @@ import java.util.concurrent.Semaphore;
 
 public class ChatServer {
 	private Set<String> _nicknames;
-	public Set<ClientConnection> _verteiler;
+	private Set<ClientConnection> _verteiler;
 	public Semaphore _workerThreadsSem;
 	public final int _serverPort;
-	
 	
 	public ChatServer(int serverPort, int maxParallelUsers) throws IOException {
 		_nicknames = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -36,10 +35,6 @@ public class ChatServer {
 	
 	public Set<ClientConnection> getRegisteredConnections() {
 		return Collections.unmodifiableSet(_verteiler);
-	}
-	
-	public Set<String> getRegisteredNicknames() {
-		return Collections.unmodifiableSet(_nicknames);
 	}
 	
 	public void unregisterNickname(String nickname) {

@@ -15,7 +15,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.net.InetAddress;
 import java.net.Socket;
+import java.net.UnknownHostException;
+import java.util.HashSet;
+import java.util.Set;
 
 import javax.net.SocketFactory;
 import javax.swing.JButton;
@@ -24,8 +28,10 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
+import praktikum2.Client;
 import praktikum2.Message;
 
 //TODO: Umbau auf UDP und broadcasten von Clients an Clients.
@@ -33,29 +39,36 @@ public class ChatClient extends JFrame {
 
 	private static final long serialVersionUID = 1L;
 	
-	private String _remoteHost;
-	public final int _remotePort = 50000;
+	private InetAddress _serverAddress;
+	public final int _serverPort = 50000;
+	private InetAddress _localAddress;
+	private int _localPort;
+	private Set<Client> _connectedClients;
 	private String _nickname;
 	private Socket _socket;
 	private PrintWriter _writer;
 	private BufferedReader _reader;
-	private boolean _clientRunning;
-	private ClientBroadcastThread _clientBroadcastThread; //TODO: implement these Threads and initialize them
-	private ClientReceiveThread _clientReceiveThread;
+	private Thread _messageReceiveThread;
+	private ClientReceiveThread _clientReceiveThread; //TODO: implement this Thread and initialize it
 	
-	//TODO Add a second JSplitpane to encapsulate a UserList on the Left side
 	private Container _container;
+	private JSplitPane _userListIOContainer;
 	private JSplitPane _ioContainer;
-	public JScrollPane _output;
+	private JScrollPane _userListScrollPane;
+	public JTextArea _userListOutput;//TODO Show the own Clients nickname?
+	private JScrollPane _outputScrollPane;
+	public JTextArea _output; //TODO make private if not needed elsewhere
 	private JPanel _inputContainer;
 	private JTextField _input;
 	private JButton _sendButton;
 	private JButton _userButton;
 
 	
-	public ChatClient() throws IOException {
+	public ChatClient() throws Exception {
 		super("LMB Chat Client");
-		_clientRunning = true;
+		_connectedClients = new HashSet<>();
+		_messageReceiveThread = new Thread(new UDPMessageReceiveRunnable(this, true));
+		_clientReceiveThread = new ClientReceiveThread();
 		
 		setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 		addWindowListener(new WindowAdapter() {
@@ -69,15 +82,16 @@ public class ChatClient extends JFrame {
 		_container = getContentPane();
 		_container.setLayout(new BorderLayout());
 		
-		_remoteHost = (String)JOptionPane.showInputDialog(_container, "Please enter the Chat Servers IP Adress: ", "Setup", JOptionPane.OK_OPTION); 
+		_serverAddress = InetAddress.getByName((String)JOptionPane.showInputDialog(_container, "Please enter the Chat Servers IP Adress: ", "Setup", JOptionPane.OK_OPTION)); 
 		
+		//initialize inputfield and buttons
 		_inputContainer = new JPanel();
 		_inputContainer.setLayout(new GridBagLayout());
 		
-		_userButton = new JButton("Benutzer");
+		_userButton = new JButton("Force Userlist Update");
 		_userButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) { 
-				showUserList();
+				updateUserList();
 			}
 		});
 		GridBagConstraints userButtonConstraints = new GridBagConstraints();
@@ -100,11 +114,7 @@ public class ChatClient extends JFrame {
 			public void actionPerformed(ActionEvent e) { 
 				String messageData = _input.getText();
 				_input.setText("");
-				try {
-					sendMessage(new Message(messageData, _nickname));
-				} catch(IOException e1) {
-					e1.printStackTrace();
-				}
+				broadcastMessage(new Message(messageData, _nickname));
 			}
 		});
 		GridBagConstraints sendButtonConstraints = new GridBagConstraints();
@@ -113,29 +123,46 @@ public class ChatClient extends JFrame {
 		sendButtonConstraints.fill = GridBagConstraints.VERTICAL;
 		_inputContainer.add(_sendButton,sendButtonConstraints);
 		
-		_output = new JScrollPane();
-		_output.setMinimumSize(new Dimension(500, 350));
-		_ioContainer = new JSplitPane(JSplitPane.VERTICAL_SPLIT, _output, _inputContainer);
-		_container.add(_ioContainer, BorderLayout.CENTER);
+		//initialize outputfield and vertical Splitpane
+		_outputScrollPane = new JScrollPane();
+		_outputScrollPane.setPreferredSize(new Dimension(500, 350));
+		_output = new JTextArea();
+		_outputScrollPane.add(_output);
+		_ioContainer = new JSplitPane(JSplitPane.VERTICAL_SPLIT, _outputScrollPane, _inputContainer);
+		
+		//initialize userList and horizontal Splitpane
+		_userListScrollPane = new JScrollPane();
+		_userListScrollPane.setPreferredSize(new Dimension(100, 500));
+		_userListOutput = new JTextArea();
+		_userListScrollPane.add(_userListOutput);
+		_userListIOContainer = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, _userListScrollPane, _ioContainer);
+		
+		//add the nested components to the window container
+		_container.add(_userListIOContainer, BorderLayout.CENTER);
 		
 		openConnection();
-		setVisible(true);
+		_messageReceiveThread.start();
 		
-		while(_clientRunning) {
-			receiveIncomingRequests();
-		}
+		pack();
+		setVisible(true);
 	}
 	
+	/**
+	 * Tries opening a connection with the server under the given address 
+	 * and broadcasts an introductory message to all connected clients.
+	 * @throws IOException
+	 */
 	private void openConnection() throws IOException {
-		try {
-			_socket =  SocketFactory.getDefault().createSocket(_remoteHost, _remotePort);
-			OutputStream out = _socket.getOutputStream();
-			InputStream in = _socket.getInputStream();
-			_writer = new PrintWriter(out, true);
-			_reader = new BufferedReader(new InputStreamReader(in));
-		} catch(Exception e) {
-			e.printStackTrace();
-		}
+		//try opening a connection with the server
+		_socket =  SocketFactory.getDefault().createSocket(_serverAddress, _serverPort);
+		_localAddress = _socket.getInetAddress();
+		_localPort = _socket.getLocalPort();
+		OutputStream out = _socket.getOutputStream();
+		InputStream in = _socket.getInputStream();
+		_writer = new PrintWriter(out, true);
+		_reader = new BufferedReader(new InputStreamReader(in));
+		
+		//negotiate a nickname with the server
 		while(!(readResponseFromServer().equals("NICKNAME?")));
 		String dialogMessage = "Please enter your preferred nickname: ";
 		String response = "";
@@ -147,13 +174,20 @@ public class ChatClient extends JFrame {
 			sendRequestToServer("NICKNAME " + _nickname);
 			response = readResponseFromServer();
 		} while(!response.matches("ACCEPTED, CONNECTED AS \\w*"));
+		
+		//introduce this client to all other connected clients
+		Message introductionMessage = new Message("CONN " + _nickname + ";" + _localAddress.getHostAddress() + ";" + _localPort, "SYSTEM");
+		updateUserList();
+		broadcastMessage(introductionMessage);
 	}
 	
 	/**
-	 * Called when the window is closed, terminates the Connection with the Server and releases all resources.
+	 * Called when the window is closed.
+	 * Terminates the Connection with the Server and releases all resources.
 	 * @throws IOException 
 	 */
 	private void closeConnection() {
+		broadcastMessage(new Message("QUIT " + _nickname + ";" + _localAddress + ";" + _localPort, "SYSTEM"));
 		sendRequestToServer("QUIT");
 		try {
 			while(!(readResponseFromServer().matches("GOODBYE, RELEASING \\w*")));
@@ -164,43 +198,24 @@ public class ChatClient extends JFrame {
 		}
 	}
 	
-	private void receiveIncomingRequests() throws IOException {
-		boolean connectionRequired = true;
-		while(connectionRequired) {
-			String response = readResponseFromServer();
-			if(response.equals("MESSAGE")) {
-				
-			}
-		}
-	}
-	
-	private void showUserList() { //TODO: transmit user Ip and port to the client and broadcast from the client.
+	/**
+	 * Updates the internal {@code Set} _connectedClients which holds all currently connected chat clients
+	 */
+	private void updateUserList(){
 		try {
-			String users;
-			users = getUserSet();
-			String message = "These are the currently active Users: " + users;
-			JOptionPane.showMessageDialog(_container, message, "Active Users", JOptionPane.INFORMATION_MESSAGE);
-		} catch(IOException e) {
+			Thread userUpdateThread = new Thread(new UpdateUserListRunnable());
+			userUpdateThread.start();
+			userUpdateThread.join();
+		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
 	}
 	
 	/**
-	 * Returns a set of the currently registered ChatClients represented with their Nicknames
-	 * @return Nicknames of currently registered ChatClients
-	 * @throws IOException 
+	 * Updates the {@code JTextArea} which holds the nicknames of currently connected clients.
 	 */
-	private String getUserSet() throws IOException {
-		String users = "";
-		sendRequestToServer("USER?");
-		String response;
-		do {
-			response = readResponseFromServer();
-			if(response.startsWith("USER ")) {
-				 users += response.substring(5);
-			}
-		} while(!response.startsWith("FINISHED"));
-		return users;
+	private void updateUserListDisplay() {
+		
 	}
 	
 	/**
@@ -226,44 +241,58 @@ public class ChatClient extends JFrame {
 	}
 	
 	/**
-	 * Sends the given {@code Message} to the Server.
+	 * Sends the given {@code Message} to all currently connected Clients.
 	 * @param message the message to send
 	 * @throws IOException 
 	 */
-	private void sendMessage(Message message) throws IOException {
-		sendRequestToServer("MESSAGE");
-		while(!(readResponseFromServer().equals("OK")));
-		sendRequestToServer("TIMESTAMP " + message.getTimeStamp());
-		sendRequestToServer("DATA " + message.getMessageData());
-		sendRequestToServer("FINISHED");
-		while(!(readResponseFromServer().equals("MESSAGE ACCEPTED")));
-	}
-	
-	/**
-	 * Receives all required Message Data from the server  and returns it as a {@code Message}
-	 * @return the {@code Message} that is to be broadcasted
-	 * @throws IOException
-	 */
-	private Message receiveMessage() throws IOException { //TODO need a second Thread running this method
-		sendRequestToServer("OK");
-		long timestamp = Long.parseLong(readResponseFromServer());
-		String request;
-		String messageData = "";
-		do {
-			request = readResponseFromServer();
-			if(request.startsWith("DATA ")) {
-				messageData += request.substring(5);
-			}
-		} while(!request.startsWith("FINISHED"));
-		sendRequestToServer("MESSAGE ACCEPTED");
-		return new Message(timestamp, messageData, _nickname);
+	private void broadcastMessage(Message message) {
+		new Thread(new UDPMessageBroadcastRunnable(_connectedClients, message)).start();
 	}
 	
 	public static void main(String args[]) {
 		try {
 			new ChatClient();
-		} catch(IOException e) {
+		} catch(Exception e) {
 			e.printStackTrace();
+		}
+	}
+	
+	public class UpdateUserListRunnable implements Runnable{
+		
+		@Override
+		public void run() {
+			try {
+				sendRequestToServer("USER?");
+				String response;
+				do {
+					response = readResponseFromServer();
+					if(response.startsWith("USER ")) {
+						parseResponse(response);
+					}
+				} while(!response.startsWith("FINISHED"));
+				updateUserListDisplay();
+			} catch(Exception e) {
+				e.printStackTrace();
+			}
+		}
+		
+		/**
+		 * Parses the response and updates the {@code ChatClient}s {@code Set} _connectedClients
+		 * @param response the responseString to parse
+		 * @throws UnknownHostException 
+		 */
+		public void parseResponse(String response) throws UnknownHostException {
+			response = response.substring(5);
+			String[] users = response.split(",");
+			for (String userDataString : users) {
+				String userData[] = userDataString.split(";");
+				
+				String nickname = userData[0];
+				InetAddress address = InetAddress.getByName(userData[1]);
+				int port = Integer.parseInt(userData[2]);
+				Client client = new Client(nickname, address, port);
+				_connectedClients.add(client);
+			}
 		}
 	}
 }

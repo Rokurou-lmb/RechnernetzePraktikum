@@ -26,8 +26,8 @@ public class ServerConnectionThread implements Runnable{
 				System.err.println("SERVER CONNECTION THREAD IS WAITING FOR CONNECTIONS");
 				_chatServer._workerThreadsSem.acquire();
 				newClientSocket = serverSocket.accept();
+				System.err.println("A NEW CONNECTION HAS BEEN ESTABLISHED");
 				ClientConnection newClientConnection = new ClientConnection(newClientSocket, _chatServer);
-				System.err.println("A new connection has been established");
 				new Thread(newClientConnection).start();
 			}
 		} catch(Exception e){
