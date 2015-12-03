@@ -18,19 +18,33 @@ public class Message implements Comparable<Message>{
 		_sender = sender;
 	}
 	
+	/**
+	 * Returns This {@code Message}s timestamp in a readable format with the format: "HH:mm:ss"
+	 * @return String representing this {@code Message}s timestamp.
+	 */
 	public String getTimeStampAsString() {//TODO test this
 		Date timestampDate = new Date(_timestamp);
 		SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
 		return dateFormat.format(timestampDate);
 	}
 	
+	/**
+	 * @return This {@code Message}s timestamp as a long, representing milliseconds since UNIX-Timedings
+	 */
 	public long getTimeStamp() {
 		return _timestamp;
 	}
 	
+	/**
+	 * @return This {@code Message}s messagedata as a {@code String}
+	 */
 	public String getMessageData() {
 		return _message;
 	}
+	
+	/**
+	 * @return This {@code Message}s senders nickname as a {@code String}
+	 */
 	public String getSender() {
 		return _sender;
 	}
