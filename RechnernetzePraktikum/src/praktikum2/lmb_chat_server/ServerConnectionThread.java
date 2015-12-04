@@ -28,7 +28,7 @@ public class ServerConnectionThread implements Runnable{
 				newClientSocket = serverSocket.accept();
 				System.err.println("A NEW CONNECTION HAS BEEN ESTABLISHED");
 				ClientConnection newClientConnection = new ClientConnection(newClientSocket, _chatServer);
-				new Thread(newClientConnection).start();
+				new Thread(newClientConnection, "ClientConnectionThread for Client " + newClientConnection.getNickname()).start();
 			}
 		} catch(Exception e){
 			

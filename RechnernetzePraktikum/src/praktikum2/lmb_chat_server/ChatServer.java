@@ -25,7 +25,7 @@ public class ChatServer {
 	}
 	
 	public void startServer() throws IOException {
-		new Thread(new ServerConnectionThread(this)).start();
+		new Thread(new ServerConnectionThread(this), "ServerConnectionThread").start();
 		
 	}
 	

@@ -55,12 +55,12 @@ public class ChatClient extends JFrame {
 	public ChatClient() throws Exception {
 		super("LMB Chat Client");
 		_connectedClients = new ConcurrentHashMap<>();
-		_messageReceiveThread = new Thread(new UDPMessageReceiveRunnable(this, true));
 		_serverAddress = InetAddress.getByName((String)JOptionPane.showInputDialog(this, "Please enter the Chat Servers IP Adress: ", "Setup", JOptionPane.OK_OPTION)); 
 		
 		setSize(500, 500);
 		initializeUI();
 		openConnection();
+		_messageReceiveThread = new Thread(new UDPMessageReceiveRunnable(this, true), "MessageReceiveThread for Client " + _nickname);
 		_messageReceiveThread.start();
 		pack();
 		setVisible(true);
@@ -188,7 +188,7 @@ public class ChatClient extends JFrame {
 	}
 	
 	/**
-	 * Updates the internal {@code Set} _connectedClients which holds all currently connected chat clients
+	 * Updates the internal {@code Set} _connectedClients which holds all currently connected chat clients and refreshes the userlist ui component
 	 * @throws InvocationTargetException 
 	 */
 	private void updateUserList(){
