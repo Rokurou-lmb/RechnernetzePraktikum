@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
 class ClientConnection implements Runnable{
 	
 	private String _nickname;
-	
+	private int _clientUDPMessageReceivePort;
 	private Socket _socket;
 	private ChatServer _server;
 	private BufferedReader _inFromClient;
@@ -51,12 +51,32 @@ class ClientConnection implements Runnable{
 	 * @throws IOException
 	 */
 	private void initiateConnection() throws IOException {
+		sendResponseToClient("UDPPORT?");
+		while(!portRegisteredSuccessfully(readRequestFromClient()));
 		sendResponseToClient("NICKNAME?");
-		while(!nickNameRegisteredSuccessfully(readRequestFromClient().substring(9))) {}
+		while(!nickNameRegisteredSuccessfully(readRequestFromClient().substring(9)));
 		_server.registerClientConnection(this);
 		sendResponseToClient("ACCEPTED, CONNECTED AS " + _nickname);
 	}
 	
+	private boolean portRegisteredSuccessfully(String clientRequest) {
+		if(!clientRequest.startsWith("UDPPORT ")) {
+			return false;
+		}
+		clientRequest = clientRequest.substring(8);
+		int portnumber;
+		try {
+			portnumber = Integer.parseInt(clientRequest);
+		} catch(NumberFormatException e) {
+			return false;
+		}
+		if(portnumber > 65535) {
+			return false;
+		}
+		_clientUDPMessageReceivePort = portnumber;
+		return true;
+	}
+
 	/**
 	 * Receives incoming requests from the client until
 	 * the client sends "QUIT", then it terminates this Thread
@@ -86,7 +106,7 @@ class ClientConnection implements Runnable{
 	 * @return {@code true} if the nickname was accepted, {@code false} otherwise
 	 */
 	private boolean nickNameRegisteredSuccessfully(String nickname) { 
-		if(!nickname.isEmpty() && _nickNamePattern.matcher(nickname).matches()) {
+		if(!nickname.isEmpty() && _nickNamePattern.matcher(nickname).matches() && !nickname.equals("SYSTEM")) {
 			if(_server.registerNickname(nickname)) {
 				_nickname = nickname;
 				return true;
@@ -108,14 +128,14 @@ class ClientConnection implements Runnable{
 		
 		String nickname;
 		InetAddress address;
-		Integer port;
+		int port;
 		String response = "USER ";
 		
 		for (ClientConnection clientConnection : clientConnections) {
 			address = clientConnection.getRemoteAddress();
-			port = clientConnection.getRemotePort();
+			port = clientConnection.getRemoteUDPPort();
 			nickname = clientConnection.getNickname();
-			response += nickname + ";" + address.getHostAddress() + ";" + port.toString() + ",";
+			response += nickname + ";" + address.getHostAddress() + ";" + port + ",";
 		}
 		response = response.substring(0, response.length()-1); //Remove trailing ","
 		sendResponseToClient(response);
@@ -147,8 +167,8 @@ class ClientConnection implements Runnable{
 		return _socket.getInetAddress();
 	}
 
-	public Integer getRemotePort() {
-		return _socket.getPort();
+	public Integer getRemoteUDPPort() {
+		return _clientUDPMessageReceivePort;
 	}
 	
 	public String getNickname() {

@@ -39,11 +39,19 @@ public class UDPMessageBroadcastRunnable implements Runnable{
 	}
 	
 	/**
-	 * Packs the data of the given {@code message} into a {@code String} to be sent in a {@code DatagramSocket}.
+	 * Packs the data of the given {@code message} into a {@code String} to be sent in a {@code DatagramPacket}.
 	 * @param message the message to pack for sending
 	 */
 	private String packMessage(Message message) {
 		String packedMessage = ""; //TODO implement this after designing the MESSAGEDATA
+		String messageString = message.getMessageString();
+		if(messageString.startsWith("CONN ")) {
+			packedMessage = messageString;
+		} else if(messageString.startsWith("QUIT ")) {
+			packedMessage = messageString;
+		} else if(messageString.startsWith("MESSAGE ")) {
+			
+		}
 		return packedMessage;
 	}
 }

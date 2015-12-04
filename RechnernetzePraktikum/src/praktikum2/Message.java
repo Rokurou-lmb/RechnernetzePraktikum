@@ -5,16 +5,16 @@ import java.text.SimpleDateFormat;
 
 public class Message implements Comparable<Message>{
 	private long _timestamp;
-	private String _message;
+	private String _messageString;
 	private String _sender;
 	
 	public Message(String message, String sender) {
 		this(System.currentTimeMillis(), message, sender);
 	}
 	
-	public Message(long timestamp, String message, String sender) {
+	public Message(long timestamp, String messageString, String sender) {
 		_timestamp = timestamp;
-		_message = message;
+		_messageString = messageString;
 		_sender = sender;
 	}
 	
@@ -29,7 +29,7 @@ public class Message implements Comparable<Message>{
 	}
 	
 	/**
-	 * @return This {@code Message}s timestamp as a long, representing milliseconds since UNIX-Timedings
+	 * @return This {@code Message}s timestamp as a {@code long}, representing milliseconds since UNIX-Timedings
 	 */
 	public long getTimeStamp() {
 		return _timestamp;
@@ -38,8 +38,8 @@ public class Message implements Comparable<Message>{
 	/**
 	 * @return This {@code Message}s messagedata as a {@code String}
 	 */
-	public String getMessageData() {
-		return _message;
+	public String getMessageString() {
+		return _messageString;
 	}
 	
 	/**

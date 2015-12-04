@@ -3,8 +3,9 @@ package praktikum2.lmb_chat_client;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.util.Map;
+
 import javax.swing.JTextArea;
+
 import praktikum2.Client;
 import praktikum2.Message;
 
@@ -12,13 +13,12 @@ public class UDPMessageReceiveRunnable implements Runnable{
 	
 	private DatagramSocket _socket;
 	private ChatClient _chatClient;
-	private Map<String, Client> _connectedClients;
 	private JTextArea _messageOutputArea;
 	public boolean _receivesMessages;
 	
-	public UDPMessageReceiveRunnable(ChatClient chatClient, boolean receivesMessages) {
+	public UDPMessageReceiveRunnable(DatagramSocket socket, ChatClient chatClient, boolean receivesMessages) {
+		_socket = socket;
 		_chatClient = chatClient;
-		_connectedClients = chatClient.getConnectedClients();
 		_messageOutputArea = chatClient.getMessageOutputArea();
 		_receivesMessages = receivesMessages;
 	}
@@ -26,26 +26,25 @@ public class UDPMessageReceiveRunnable implements Runnable{
 	@Override
 	public void run() {
 		try {
-			_socket = new DatagramSocket(0); //TODO dynamic port binding only used for testing purposes with more than 1 client per machine.
 			while(_receivesMessages) {
 				byte[] buffer = new byte[1024];
-				DatagramPacket packet = new DatagramPacket(buffer, buffer.length); //TODO usage of buffer and length unclear
+				DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 				_socket.receive(packet); //TODO this might be executed after the ChatClient has been disposed off?
 				byte[] data = packet.getData();
-				String messageDataString = new String(data);
+				String messageDataString = new String(data).trim();
 				if(messageDataString.startsWith("CONN ")) {
-					String messageData = messageDataString.substring(6);
+					String messageData = messageDataString.substring(5);
 					String[] clientData = messageData.split(";");
 					String nickname = clientData[0];
 					Client newClient = new Client(nickname, InetAddress.getByName(clientData[1]), Integer.parseInt(clientData[2]));
-					_connectedClients.put(nickname, newClient); //TODO pull this into the ChatClient in 2 seperate methods
-					_chatClient.updateUserListDisplay();
+					_chatClient.registerNewClient(nickname, newClient);
+					
 				} else if(messageDataString.startsWith("QUIT ")) {
-					String messageData = messageDataString.substring(6);
+					String messageData = messageDataString.substring(5);
 					String[] clientData = messageData.split(";");
 					String nickname = clientData[0];
-					_connectedClients.remove(nickname); //TODO pull this into the ChatClient in 2 seperate methods
-					_chatClient.updateUserListDisplay();
+					_chatClient.unregisterClient(nickname);
+					
 				} else if(messageDataString.startsWith("MESSAGE ")) {
 					String messageData = messageDataString.substring(9);
 					Message parsedMessage = parseMessage(messageData);
@@ -65,8 +64,8 @@ public class UDPMessageReceiveRunnable implements Runnable{
 	private Message parseMessage(String messageData) { //TODO implement this after designing the MESSAGEDATA
 		String timestamp = "";
 		String nickname = "";
-		if(messageData.startsWith("DATA ")) {
-			messageData = messageData.substring(5);
+		if(messageData.startsWith("MESSAGE ")) {
+			messageData = messageData.substring(8);
 		}
 		return new Message(Long.parseLong(timestamp.substring(10)), messageData, nickname);
 	}
@@ -89,7 +88,7 @@ public class UDPMessageReceiveRunnable implements Runnable{
 		String messageString = "";
 		messageString += "[" + message.getTimeStampAsString() + "] ";
 		messageString += message.getSender() + ": ";
-		messageString += message.getMessageData();
+		messageString += message.getMessageString();
 		return messageString;
 	}
 	
@@ -116,5 +115,4 @@ public class UDPMessageReceiveRunnable implements Runnable{
 //		sendRequestToServer("MESSAGE ACCEPTED");
 //		return new Message(timestamp, messageData, _nickname);
 //	}
-
 }

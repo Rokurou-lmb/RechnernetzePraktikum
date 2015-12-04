@@ -16,11 +16,13 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
+import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
 import javax.net.SocketFactory;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -31,6 +33,7 @@ import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+
 import praktikum2.Client;
 import praktikum2.Message;
 
@@ -41,7 +44,8 @@ public class ChatClient extends JFrame {
 	private InetAddress _serverAddress;
 	public final int _serverPort = 50000;
 	private InetAddress _localAddress;
-	private int _localPort;
+	private int _localTCPPort;
+	private int _localUDPPort;
 	private Map<String, Client> _connectedClients;
 	private String _nickname;
 	private Socket _socket;
@@ -50,17 +54,18 @@ public class ChatClient extends JFrame {
 	private Thread _messageReceiveThread;
 	
 	private JTextArea _userListOutputArea;
-	private JTextArea _messageOutputArea; //TODO make private if not needed elsewhere
+	private JTextArea _messageOutputArea;
 	
 	public ChatClient() throws Exception {
 		super("LMB Chat Client");
 		_connectedClients = new ConcurrentHashMap<>();
 		_serverAddress = InetAddress.getByName((String)JOptionPane.showInputDialog(this, "Please enter the Chat Servers IP Adress: ", "Setup", JOptionPane.OK_OPTION)); 
 		
-		setSize(500, 500);
 		initializeUI();
+		DatagramSocket socket = new DatagramSocket(0); //TODO dynamic port binding only used for testing purposes with more than 1 client per machine.
+		_localUDPPort = socket.getLocalPort();
 		openConnection();
-		_messageReceiveThread = new Thread(new UDPMessageReceiveRunnable(this, true), "MessageReceiveThread for Client " + _nickname);
+		_messageReceiveThread = new Thread(new UDPMessageReceiveRunnable(socket, this, true), "MessageReceiveThread for Client " + _nickname);
 		_messageReceiveThread.start();
 		pack();
 		setVisible(true);
@@ -68,6 +73,7 @@ public class ChatClient extends JFrame {
 	
 	private void initializeUI() {
 		setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+		setMinimumSize(new Dimension(400,200));
 		addWindowListener(new WindowAdapter() {
 			@Override
 			public void windowClosing(WindowEvent event) {
@@ -81,6 +87,7 @@ public class ChatClient extends JFrame {
 		//initialize inputfield and buttons
 		JPanel inputContainer = new JPanel();
 		inputContainer.setLayout(new GridBagLayout());
+		inputContainer.setPreferredSize(new Dimension(550, 30));
 		
 		JButton userButton = new JButton("Force Userlist Update");
 		userButton.addActionListener(new ActionListener() {
@@ -96,12 +103,12 @@ public class ChatClient extends JFrame {
 		
 		JTextField input = new JTextField();
 		input.setHorizontalAlignment(JTextField.LEFT);
-		input.setPreferredSize(new Dimension(100, 50));
 		GridBagConstraints inputConstraints = new GridBagConstraints();
 		inputConstraints.weightx = 1;
 		inputConstraints.weighty = 1;
 		inputConstraints.fill = GridBagConstraints.BOTH;
 		inputContainer.add(input, inputConstraints);
+		inputContainer.setMinimumSize(new Dimension(300,20));
 		
 		JButton sendButton = new JButton("Senden");
 		sendButton.addActionListener(new ActionListener() {
@@ -121,15 +128,19 @@ public class ChatClient extends JFrame {
 		_messageOutputArea = new JTextArea();
 		_messageOutputArea.setEditable(false);
 		JScrollPane outputScrollPane = new JScrollPane(_messageOutputArea);
-		outputScrollPane.setPreferredSize(new Dimension(500, 350));
+		outputScrollPane.setPreferredSize(new Dimension(450,250));
 		JSplitPane ioContainer = new JSplitPane(JSplitPane.VERTICAL_SPLIT, outputScrollPane, inputContainer);
+		ioContainer.setResizeWeight(1);
 		
 		//initialize userList and horizontal Splitpane
 		_userListOutputArea = new JTextArea();
 		_userListOutputArea.setEditable(false);
 		JScrollPane userListScrollPane = new JScrollPane(_userListOutputArea);
-		userListScrollPane.setPreferredSize(new Dimension(100, 500));
+		userListScrollPane.setPreferredSize(new Dimension(50, 300));
+		userListScrollPane.setMinimumSize(new Dimension(50, 10));
+		userListScrollPane.setMaximumSize(new Dimension(200, Integer.MAX_VALUE));
 		JSplitPane userListIOContainer = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, userListScrollPane, ioContainer);
+		userListIOContainer.setResizeWeight(0.1);
 		
 		//add the nested components to the window container
 		container.add(userListIOContainer, BorderLayout.CENTER);
@@ -145,13 +156,15 @@ public class ChatClient extends JFrame {
 		//try opening a connection with the server
 		_socket =  SocketFactory.getDefault().createSocket(_serverAddress, _serverPort);
 		_localAddress = _socket.getInetAddress();
-		_localPort = _socket.getLocalPort();
+		_localTCPPort = _socket.getLocalPort();
 		OutputStream out = _socket.getOutputStream();
 		InputStream in = _socket.getInputStream();
 		_writer = new PrintWriter(out, true);
 		_reader = new BufferedReader(new InputStreamReader(in));
 		
 		//negotiate a nickname with the server
+		while(!(readResponseFromServer().equals("UDPPORT?")));
+		sendRequestToServer("UDPPORT " + _localUDPPort);
 		while(!(readResponseFromServer().equals("NICKNAME?")));
 		String dialogMessage = "Please enter your preferred nickname: ";
 		String response = "";
@@ -163,9 +176,10 @@ public class ChatClient extends JFrame {
 			sendRequestToServer("NICKNAME " + _nickname);
 			response = readResponseFromServer();
 		} while(!response.matches("ACCEPTED, CONNECTED AS \\w*"));
+		setTitle(getTitle() + " - Connected as " + _nickname);
 		
 		//introduce this client to all other connected clients
-		Message introductionMessage = new Message("CONN " + _nickname + ";" + _localAddress.getHostAddress() + ";" + _localPort, "SYSTEM");//TODO: check why this doesn't get send or doesn't get parsed
+		Message introductionMessage = new Message(appendClientData("CONN "), "SYSTEM");
 		updateUserList();
 		broadcastMessage(introductionMessage);
 	}
@@ -176,7 +190,7 @@ public class ChatClient extends JFrame {
 	 * @throws IOException 
 	 */
 	private void closeConnection() {
-		broadcastMessage(new Message("QUIT " + _nickname + ";" + _localAddress + ";" + _localPort, "SYSTEM"));
+		broadcastMessage(new Message(appendClientData("QUIT "), "SYSTEM"));
 		sendRequestToServer("QUIT");
 		try {
 			while(!(readResponseFromServer().matches("GOODBYE, RELEASING \\w*")));
@@ -200,6 +214,44 @@ public class ChatClient extends JFrame {
 	}
 	
 	/**
+	 * Updates the {@code JTextArea} which holds the nicknames of currently connected clients.
+	 */
+	public void updateUserListDisplay() {
+		String users = "";
+		for(Client client : _connectedClients.values()) {
+			users += client.getNickname() + "\n";
+		}
+		_userListOutputArea.setText(users);
+	}
+	
+	public void registerNewClient(String nickname, Client newClient) {
+		_connectedClients.put(nickname, newClient);
+		updateUserListDisplay();
+	}
+	
+	public void unregisterClient(String nickname) {
+		_connectedClients.remove(nickname);
+		updateUserListDisplay();
+	}
+	
+	/**
+	 * Sends the given {@code Message} to all currently connected Clients.
+	 * @param message the message to send
+	 * @throws IOException 
+	 */
+	private void broadcastMessage(Message message) {
+		new Thread(new UDPMessageBroadcastRunnable(_connectedClients, message), "MessageBroadcastThread for Client " + _nickname).start();
+	}
+	
+	/**
+	 * Appends the given {@code String} with "<_nickname>;<_localAddress>;<_localPort>"
+	 * @param messageString
+	 */
+	private String appendClientData(String messageString) {
+		return messageString + _nickname + ";" + _localAddress.getHostAddress() + ";" + _localUDPPort; //TODO use the ip and port from the transmitted package instead of transmitting it yourself
+	}
+	
+	/**
 	 * Reads the incoming response from the Server
 	 * 
 	 * @return {@code String} the incoming response
@@ -219,15 +271,6 @@ public class ChatClient extends JFrame {
 	public void sendRequestToServer(String request) {
 		System.err.println("CLIENT: " + request);
 		_writer.println(request);
-	}
-	
-	/**
-	 * Sends the given {@code Message} to all currently connected Clients.
-	 * @param message the message to send
-	 * @throws IOException 
-	 */
-	private void broadcastMessage(Message message) {
-		new Thread(new UDPMessageBroadcastRunnable(_connectedClients, message)).start();
 	}
 	
 	public static void main(String args[]) {
@@ -289,16 +332,5 @@ public class ChatClient extends JFrame {
 				_connectedClients.put(nickname, client);
 			}
 		}
-	}
-	
-	/**
-	 * Updates the {@code JTextArea} which holds the nicknames of currently connected clients.
-	 */
-	public void updateUserListDisplay() {
-		String users = "";
-		for(Client client : _connectedClients.values()) {
-			users += client.getNickname() + "\n";
-		}
-		_userListOutputArea.setText(users);
 	}
 }
