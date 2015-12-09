@@ -2,10 +2,7 @@ package praktikum2.lmb_chat_client;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetAddress;
-
 import javax.swing.JTextArea;
-
 import praktikum2.Client;
 import praktikum2.Message;
 
@@ -29,25 +26,20 @@ public class UDPMessageReceiveRunnable implements Runnable{
 			while(_receivesMessages) {
 				byte[] buffer = new byte[1024];
 				DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-				_socket.receive(packet); //TODO this might be executed after the ChatClient has been disposed off?
+				_socket.receive(packet);
 				byte[] data = packet.getData();
 				String messageDataString = new String(data).trim();
 				if(messageDataString.startsWith("CONN ")) {
-					String messageData = messageDataString.substring(5);
-					String[] clientData = messageData.split(";");
-					String nickname = clientData[0];
-					Client newClient = new Client(nickname, InetAddress.getByName(clientData[1]), Integer.parseInt(clientData[2]));
-					_chatClient.registerNewClient(nickname, newClient);
-					
+					String nickname = messageDataString.substring(5);
+					Client newClient = new Client(nickname, packet.getAddress(), packet.getPort());
+					_chatClient.registerNewClient(newClient);
 				} else if(messageDataString.startsWith("QUIT ")) {
-					String messageData = messageDataString.substring(5);
-					String[] clientData = messageData.split(";");
-					String nickname = clientData[0];
+					String nickname = messageDataString.substring(5);
 					_chatClient.unregisterClient(nickname);
-					
 				} else if(messageDataString.startsWith("MESSAGE ")) {
 					String messageData = messageDataString.substring(9);
 					Message parsedMessage = parseMessage(messageData);
+					_chatClient.registerNewClient(new Client(parsedMessage.getSender(), packet.getAddress(), packet.getPort())); //TODO: check if client is already registered before registering
 					showMessage(parsedMessage);
 					logMessage(parsedMessage);
 				}
@@ -61,20 +53,19 @@ public class UDPMessageReceiveRunnable implements Runnable{
 	 * Parses the received UDPDatagram and returns it as a {@code Message}
 	 * @return the {@code Message} that has been transmitted
 	 */
-	private Message parseMessage(String messageData) { //TODO implement this after designing the MESSAGEDATA
-		String timestamp = "";
-		String nickname = "";
+	private Message parseMessage(String messageData) {
 		if(messageData.startsWith("MESSAGE ")) {
 			messageData = messageData.substring(8);
 		}
-		return new Message(Long.parseLong(timestamp.substring(10)), messageData, nickname);
+		String[] splitMessageData = messageData.split(";", 3);
+		return new Message(Long.parseLong(splitMessageData[0]), splitMessageData[2], splitMessageData[1]);
 	}
 	
 	/**
 	 * Displays the {@code Message} in the output area
 	 * @param message
 	 */
-	private void showMessage(Message message) { //TODO: test this
+	private void showMessage(Message message) {
 		String messageString = constructMessageString(message);
 		_messageOutputArea.append(messageString);
 	}
@@ -88,31 +79,11 @@ public class UDPMessageReceiveRunnable implements Runnable{
 		String messageString = "";
 		messageString += "[" + message.getTimeStampAsString() + "] ";
 		messageString += message.getSender() + ": ";
-		messageString += message.getMessageString();
+		messageString += message.getMessageString() + "\n";
 		return messageString;
 	}
 	
 	private void logMessage(Message message) {
 		//TODO implement logging
 	}
-	
-//	/**
-//	 * Receives all required Message Data from the server  and returns it as a {@code Message}
-//	 * @return the {@code Message} that is to be broadcasted
-//	 * @throws IOException
-//	 */
-//	private Message receiveMessage() throws IOException {
-//		sendRequestToServer("OK");
-//		long timestamp = Long.parseLong(readResponseFromServer());
-//		String request;
-//		String messageData = "";
-//		do {
-//			request = readResponseFromServer();
-//			if(request.startsWith("DATA ")) {
-//				messageData += request.substring(5);
-//			}
-//		} while(!request.startsWith("FINISHED"));
-//		sendRequestToServer("MESSAGE ACCEPTED");
-//		return new Message(timestamp, messageData, _nickname);
-//	}
 }

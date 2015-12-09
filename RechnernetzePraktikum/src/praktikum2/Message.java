@@ -22,7 +22,7 @@ public class Message implements Comparable<Message>{
 	 * Returns This {@code Message}s timestamp in a readable format with the format: "HH:mm:ss"
 	 * @return String representing this {@code Message}s timestamp.
 	 */
-	public String getTimeStampAsString() {//TODO test this
+	public String getTimeStampAsString() {
 		Date timestampDate = new Date(_timestamp);
 		SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
 		return dateFormat.format(timestampDate);

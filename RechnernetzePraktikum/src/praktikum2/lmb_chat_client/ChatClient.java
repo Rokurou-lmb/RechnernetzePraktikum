@@ -40,15 +40,18 @@ import praktikum2.Message;
 public class ChatClient extends JFrame {
 
 	private static final long serialVersionUID = 1L;
-	
+
+	/**
+	 * This socket is used for both sending and receiving UDP Packets by 
+	 * {@code UDPMessageBroadcastRunnable} and {@code UDPMessageReceiveRunnable} respectively.
+	 */
+	private DatagramSocket _udpSocket;
 	private InetAddress _serverAddress;
 	public final int _serverPort = 50000;
-	private InetAddress _localAddress;
-	private int _localTCPPort;
 	private int _localUDPPort;
 	private Map<String, Client> _connectedClients;
 	private String _nickname;
-	private Socket _socket;
+	private Socket _tcpSocket;
 	private PrintWriter _writer;
 	private BufferedReader _reader;
 	private Thread _messageReceiveThread;
@@ -62,10 +65,10 @@ public class ChatClient extends JFrame {
 		_serverAddress = InetAddress.getByName((String)JOptionPane.showInputDialog(this, "Please enter the Chat Servers IP Adress: ", "Setup", JOptionPane.OK_OPTION)); 
 		
 		initializeUI();
-		DatagramSocket socket = new DatagramSocket(0); //TODO dynamic port binding only used for testing purposes with more than 1 client per machine.
-		_localUDPPort = socket.getLocalPort();
+		_udpSocket = new DatagramSocket(0); //TODO dynamic port binding only used for testing purposes with more than 1 client per machine.
+		_localUDPPort = _udpSocket.getLocalPort();
 		openConnection();
-		_messageReceiveThread = new Thread(new UDPMessageReceiveRunnable(socket, this, true), "MessageReceiveThread for Client " + _nickname);
+		_messageReceiveThread = new Thread(new UDPMessageReceiveRunnable(_udpSocket, this, true), "MessageReceiveThread for Client " + _nickname);
 		_messageReceiveThread.start();
 		pack();
 		setVisible(true);
@@ -113,7 +116,7 @@ public class ChatClient extends JFrame {
 		JButton sendButton = new JButton("Senden");
 		sendButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) { 
-				String messageData = input.getText();
+				String messageData = "MESSAGE " + input.getText();
 				input.setText("");
 				broadcastMessage(new Message(messageData, _nickname));
 			}
@@ -144,6 +147,8 @@ public class ChatClient extends JFrame {
 		
 		//add the nested components to the window container
 		container.add(userListIOContainer, BorderLayout.CENTER);
+		input.requestFocusInWindow();
+		this.getRootPane().setDefaultButton(sendButton);
 	}
 	
 	/**
@@ -154,11 +159,9 @@ public class ChatClient extends JFrame {
 	 */
 	private void openConnection() throws IOException {
 		//try opening a connection with the server
-		_socket =  SocketFactory.getDefault().createSocket(_serverAddress, _serverPort);
-		_localAddress = _socket.getInetAddress();
-		_localTCPPort = _socket.getLocalPort();
-		OutputStream out = _socket.getOutputStream();
-		InputStream in = _socket.getInputStream();
+		_tcpSocket =  SocketFactory.getDefault().createSocket(_serverAddress, _serverPort);
+		OutputStream out = _tcpSocket.getOutputStream();
+		InputStream in = _tcpSocket.getInputStream();
 		_writer = new PrintWriter(out, true);
 		_reader = new BufferedReader(new InputStreamReader(in));
 		
@@ -179,7 +182,7 @@ public class ChatClient extends JFrame {
 		setTitle(getTitle() + " - Connected as " + _nickname);
 		
 		//introduce this client to all other connected clients
-		Message introductionMessage = new Message(appendClientData("CONN "), "SYSTEM");
+		Message introductionMessage = new Message("CONN " + _nickname, "SYSTEM");
 		updateUserList();
 		broadcastMessage(introductionMessage);
 	}
@@ -190,7 +193,7 @@ public class ChatClient extends JFrame {
 	 * @throws IOException 
 	 */
 	private void closeConnection() {
-		broadcastMessage(new Message(appendClientData("QUIT "), "SYSTEM"));
+		broadcastMessage(new Message("QUIT " + _nickname, "SYSTEM"));
 		sendRequestToServer("QUIT");
 		try {
 			while(!(readResponseFromServer().matches("GOODBYE, RELEASING \\w*")));
@@ -216,7 +219,7 @@ public class ChatClient extends JFrame {
 	/**
 	 * Updates the {@code JTextArea} which holds the nicknames of currently connected clients.
 	 */
-	public void updateUserListDisplay() {
+	private void updateUserListDisplay() {
 		String users = "";
 		for(Client client : _connectedClients.values()) {
 			users += client.getNickname() + "\n";
@@ -224,8 +227,13 @@ public class ChatClient extends JFrame {
 		_userListOutputArea.setText(users);
 	}
 	
-	public void registerNewClient(String nickname, Client newClient) {
-		_connectedClients.put(nickname, newClient);
+	/**
+	 * Registers a new Client that joined the Chatroom and updates the Userlist
+	 * @param nickname the nickname of the new Client
+	 * @param newClient
+	 */
+	public void registerNewClient(Client newClient) {
+		_connectedClients.put(newClient.getNickname(), newClient);
 		updateUserListDisplay();
 	}
 	
@@ -240,15 +248,7 @@ public class ChatClient extends JFrame {
 	 * @throws IOException 
 	 */
 	private void broadcastMessage(Message message) {
-		new Thread(new UDPMessageBroadcastRunnable(_connectedClients, message), "MessageBroadcastThread for Client " + _nickname).start();
-	}
-	
-	/**
-	 * Appends the given {@code String} with "<_nickname>;<_localAddress>;<_localPort>"
-	 * @param messageString
-	 */
-	private String appendClientData(String messageString) {
-		return messageString + _nickname + ";" + _localAddress.getHostAddress() + ";" + _localUDPPort; //TODO use the ip and port from the transmitted package instead of transmitting it yourself
+		new Thread(new UDPMessageBroadcastRunnable(_connectedClients, message, _udpSocket), "MessageBroadcastThread for Client " + _nickname).start();
 	}
 	
 	/**
@@ -257,7 +257,7 @@ public class ChatClient extends JFrame {
 	 * @return {@code String} the incoming response
 	 * @throws IOException in case of errors while reading the response
 	 */
-	public String readResponseFromServer() throws IOException {
+	private String readResponseFromServer() throws IOException {
 		String response = _reader.readLine();
 		System.err.println("SERVER: " + response);
 		return response;
@@ -268,7 +268,7 @@ public class ChatClient extends JFrame {
 	 * 
 	 * @param request the String to send
 	 */
-	public void sendRequestToServer(String request) {
+	private void sendRequestToServer(String request) {
 		System.err.println("CLIENT: " + request);
 		_writer.println(request);
 	}
@@ -307,18 +307,17 @@ public class ChatClient extends JFrame {
 					}
 				} while(!response.startsWith("FINISHED"));
 				updateUserListDisplay();
-				sendRequestToServer("USERLIST ACCEPTED");
 			} catch(Exception e) {
 				e.printStackTrace();
 			}
 		}
 		
 		/**
-		 * Parses the response and updates the {@code ChatClient}s {@code Set} _connectedClients
+		 * Parses the response and updates the {@code ChatClient}s _connectedClients {@code Set}
 		 * @param response the responseString to parse
 		 * @throws UnknownHostException 
 		 */
-		public void parseResponse(String response) throws UnknownHostException {
+		private void parseResponse(String response) throws UnknownHostException {
 			response = response.substring(5);
 			String[] users = response.split(",");
 			_connectedClients.clear();

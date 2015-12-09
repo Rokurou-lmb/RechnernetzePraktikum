@@ -11,27 +11,27 @@ public class UDPMessageBroadcastRunnable implements Runnable{
 
 	private Message _message;
 	private Map<String, Client> _recipients;
+	private DatagramSocket _socket;
 	
-	public UDPMessageBroadcastRunnable(Map<String, Client> recipients, Message messageToBroadcast) {
+	public UDPMessageBroadcastRunnable(Map<String, Client> recipients, Message messageToBroadcast, DatagramSocket socket) {
 		_recipients = recipients;
 		_message = messageToBroadcast;
+		_socket = socket;
 	}
 	
 	@Override
 	public void run() {
-		try (DatagramSocket udpSocket = new DatagramSocket()){
+		try {
 			String message = packMessage(_message);
 			byte[] messageBytes = new byte[1024];
 			messageBytes = message.getBytes();
 			int offset = 0;
 			int length = messageBytes.length;
-			InetAddress address;
-			Integer portnumber;
 			for (Client recipient : _recipients.values()) {
-				address = recipient.getIpAddress();
-				portnumber = recipient.getPortnumber();
+				InetAddress address = recipient.getIpAddress();
+				Integer portnumber = recipient.getPortnumber();
 				DatagramPacket packet = new DatagramPacket(messageBytes, offset, length, address , portnumber);
-				udpSocket.send(packet);
+				_socket.send(packet);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -43,14 +43,12 @@ public class UDPMessageBroadcastRunnable implements Runnable{
 	 * @param message the message to pack for sending
 	 */
 	private String packMessage(Message message) {
-		String packedMessage = ""; //TODO implement this after designing the MESSAGEDATA
+		String packedMessage = "";
 		String messageString = message.getMessageString();
-		if(messageString.startsWith("CONN ")) {
-			packedMessage = messageString;
-		} else if(messageString.startsWith("QUIT ")) {
+		if(messageString.startsWith("CONN ") || messageString.startsWith("QUIT ")) {
 			packedMessage = messageString;
 		} else if(messageString.startsWith("MESSAGE ")) {
-			
+			packedMessage = "MESSAGE " + message.getTimeStamp() + ";" + message.getSender() + ";" + messageString.substring(8);
 		}
 		return packedMessage;
 	}

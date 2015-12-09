@@ -93,7 +93,6 @@ class ClientConnection implements Runnable{
 			} else if(request.equals("USER?")) {
 				sendUserList();
 				sendResponseToClient("FINISHED");
-				while(!readRequestFromClient().equals("USERLIST ACCEPTED")); //TODO Rethink if this part of the protocol is needed
 			}
 		}
 	}
@@ -106,7 +105,7 @@ class ClientConnection implements Runnable{
 	 * @return {@code true} if the nickname was accepted, {@code false} otherwise
 	 */
 	private boolean nickNameRegisteredSuccessfully(String nickname) { 
-		if(!nickname.isEmpty() && _nickNamePattern.matcher(nickname).matches() && !nickname.equals("SYSTEM")) {
+		if((nickname.length() > 3) && _nickNamePattern.matcher(nickname).matches() && !nickname.equals("SYSTEM")) {
 			if(_server.registerNickname(nickname)) {
 				_nickname = nickname;
 				return true;

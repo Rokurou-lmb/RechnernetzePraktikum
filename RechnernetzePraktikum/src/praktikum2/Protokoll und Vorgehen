@@ -1,63 +1,49 @@
+Im Folgenden werden Protokolle in der folgenen Form beschrieben:
+
+S: <STRING> = A String sent from the Server to the Client
+C: <STRING> = A String sent from the Client to the Server
+
+<>: spitze Klammern kennzeichnen Platzhalter
+
 Verbindungsaufbau zwischen Client & Server:
 
-//Verbindug über TCP-Sockets wurde auf Port 50000 aufgebaut
-
+//Verbindung wird über TCP Port 50000 aufgebaut
+S: UDPPORT?
+C: <UDPPORT>
 S: NICKNAME?
-C: NICKNAME <NICKNAME> (Has to match "\w*")
-S: ACCEPTED, CONNECTED AS <NICKNAME> / REFUSED ERRORCODE <NICKNAME_REFUSAL_CODE>(->6)
+C: NICKNAME <NICKNAME>
+S: ACCEPTED, CONNECTED AS <NICKNAME> / REFUSED <ERRORCODE & MESSAGE>
 
-Bevor eine erfolgreiche Verbindung aufgebaut wurde kann die Verbindung durch einen "kurzen" Timeout beendet werden.
-Bei Nickname-Refusal erwartet der Server einen neuen Nicknamen.
+Sollte der <NICKNAME> nicht vom Server angenommen werden erwartet er einen neuen Vorschlag.
 NICKNAME_REFUSAL_CODE: 42 - Name already taken 
-		1337 - Name not allowed
-Der Client wird in die Verteilerliste aufgenommen und sein Nickname hinterlegt.
+					   1337 - Name not allowed
 
-
------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
 
 Verbindungsabbau zwischen Client & Server
 
 C: QUIT
 S: GOODBYE, RELEASING <NICKNAME>
 
-Client wird aus der Verteilerliste des Servers entfernt und sein Nickname wird wieder aus dem Mapping entfernt
+---------------------------------------------------------------------------------------------
 
------------------------------------------------------------------------------------
-
-Nachrichtenaustausch vom Client zum Server (Umbauen zu UDP mit verbindungslosem Aufbau, direkt die gesammte Message(Timestamp, Nickname, Data) übertragen von Client zu Client)
-
-C: MESSAGE
-S: OK
-C: TIMESTAMP <TIMESTAMP> (expects a long, not really checked right now)
-C: DATA <MESSAGE_DATA> (*As long as the following messages start with DATA they're interpreted as part of the MESSAGE_DATA, MESSAGE_DATA is plain Text)
-C: FINISHED
-S: MESSAGE ACCEPTED / MESSAGE_REFUSED <MESSAGE_REFUSAL_CODE>
-
-MESSAGE_REFUSAL_CODE: 7 - Timestamp invalid
-
-Nachricht wird vom Server an alle Clients in der Verteilerliste versendet
-
------------------------------------------------------------------------------------
-
-Nachrichtenaustausch vom Server zum Client
-
-S: MESSAGE
-C: OK
-S: NICKNAME <NICKNAME>
-S: TIMESTAMP <TIMESTAMP> (expects a long, not really checked right now)
-S: DATA <MESSAGE DATA>
-S: FINISHED
-C: MESSAGE ACCEPTED
-
-Nachricht wird vom Client im ChatFenster dargestellt.
-
------------------------------------------------------------------------------------
-
-Benutzerabfrage vom Client an den Server
+Abfrage der am Server registrierten Benutzer
 
 C: USER?
-S: USER <NICKNAME>;<IP_ADDRESS>;<PORT>(,<NICKNAME>;<IP_ADDRESS>;<PORT>)*
+S: USER <NICKNAME>;<IP_ADDRESS>;<UDPPORT>(,<NICKNAME>;<IP_ADDRESS>;<PORT>)*
 S: FINISHED
 C: USERLIST ACCEPTED
 
-Nutzer werden im ChatFenster ausgegeben
+---------------------------------------------------------------------------------------------
+
+Platzhalter:
+
+<NICKNAME> Has to be atleast 4 Characters long, mustn't be on the Blacklist, has to match "\w*"
+<UDPPORT> Has to be a valid Portnumber
+<IP_ADDRESS> Has to be a valid IPV4 Address
+
+---------------------------------------------------------------------------------------------
+
+Nickname-Blacklist:
+
+SYSTEM

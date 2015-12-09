@@ -20,7 +20,7 @@ public class ChatServer {
 	}
 	
 	public static void main(String[] args) throws IOException {
-		ChatServer myServer = new ChatServer(50000, 5);
+		ChatServer myServer = new ChatServer(50000, 100);
 		myServer.startServer();
 	}
 	
