@@ -44,4 +44,4 @@ Platzhalter:
 
 <NICKNAME> Has to be atleast 4 Characters long, mustn't be on the Blacklist, has to match "\w*"
 <TIMESTAMP> Has to be a long representing milliseconds since midnight, January 1, 1970 UTC
-<MESSAGE_STRING> Eine beliebige Zeichenfolge
+<MESSAGE_STRING> Eine beliebige Zeichenfolge codiert in UTF-8

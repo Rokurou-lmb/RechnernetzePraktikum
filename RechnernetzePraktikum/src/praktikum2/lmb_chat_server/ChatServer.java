@@ -20,13 +20,12 @@ public class ChatServer {
 	}
 	
 	public static void main(String[] args) throws IOException {
-		ChatServer myServer = new ChatServer(50000, 100);
+		ChatServer myServer = new ChatServer(50001, 100);
 		myServer.startServer();
 	}
 	
 	public void startServer() throws IOException {
 		new Thread(new ServerConnectionThread(this), "ServerConnectionThread").start();
-		
 	}
 	
 	public void registerClientConnection(ClientConnection newClientConnection) {

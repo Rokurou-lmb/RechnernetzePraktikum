@@ -31,7 +31,7 @@ public class ServerConnectionThread implements Runnable{
 				new Thread(newClientConnection, "ClientConnectionThread for Client " + newClientConnection.getNickname()).start();
 			}
 		} catch(Exception e){
-			
+			e.printStackTrace();
 		}
 	}
 }
