@@ -1,9 +1,13 @@
+ServerSpezifikation:
+
 Im Folgenden werden Protokolle in der folgenen Form beschrieben:
 
 S: <STRING> = A String sent from the Server to the Client
 C: <STRING> = A String sent from the Client to the Server
 
 <>: spitze Klammern kennzeichnen Platzhalter
+
+---------------------------------------------------------------------------------------------
 
 Verbindungsaufbau zwischen Client & Server:
 

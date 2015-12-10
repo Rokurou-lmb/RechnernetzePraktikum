@@ -1,0 +1,47 @@
+ClientSpezifikation:
+
+Im Folgenden werden Protokolle in der folgenen Form beschrieben:
+
+C: <STRING> = A String sent from the Client to the all other Clients
+
+<>: spitze Klammern kennzeichnen Platzhalter
+
+---------------------------------------------------------------------------------------------
+
+ChatClient Architektur:
+
+Da der Server lediglich eine Liste aller aktiven Benutzer verwaltet müssen alle anderen Funktionalitäten vom Clienten übernommen werden.
+
+Sämtliche Kommunikation zwischen Clients(Versenden und Annehmen von Nachrichten) geschieht über einen DatagramSocket desen gebundener Port beim Verbindungsaufbau dem Server mitgeteilt werden muss.
+
+---------------------------------------------------------------------------------------------
+
+Verbindungsaufbau
+
+Jeder neu verbundene Client muss alle bereits verbundenen Clients über seine Anmeldung benachrichtigen.
+
+C: CONN <NICKNAME>
+
+---------------------------------------------------------------------------------------------
+
+Verbindungabbau
+
+Jeder Client muss alle verbundenen Clients über seine Abmeldung benachrichtigen.
+
+C: QUIT <NICKNAME>
+
+---------------------------------------------------------------------------------------------
+
+Nachrichten versenden
+
+Jede Nachricht muss an alle anderen Clients versendet werden.
+
+C: MESSAGE <TIMESTAMP>;<NICKNAME>;<MESSAGE_STRING>
+
+---------------------------------------------------------------------------------------------
+
+Platzhalter:
+
+<NICKNAME> Has to be atleast 4 Characters long, mustn't be on the Blacklist, has to match "\w*"
+<TIMESTAMP> Has to be a long representing milliseconds since midnight, January 1, 1970 UTC
+<MESSAGE_STRING> Eine beliebige Zeichenfolge
