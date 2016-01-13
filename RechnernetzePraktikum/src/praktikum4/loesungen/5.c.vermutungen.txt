@@ -1,0 +1,2 @@
+Da in der Regel nur die zum Zeitpunkt der Erzeungung gueltige IP vermerkt wird
+ist die Regel nach jeder Änderung veraltet.
