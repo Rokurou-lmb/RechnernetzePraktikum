@@ -21,8 +21,9 @@ networker@lab21:~/git/RechnernetzePraktikum/RechnernetzePraktikum/src/praktikum4
 
 Aufgabe 3.b)
 
-networker@lab21:~/git/RechnernetzePraktikum/RechnernetzePraktikum/src/praktikum4/loesungen> sudo /usr/sbin/iptables -I INPUT -s 172.16.1.0/24 -j DROP
-networker@lab21:~/git/RechnernetzePraktikum/RechnernetzePraktikum/src/praktikum4/loesungen> sudo /usr/sbin/iptables -I INPUT -s 172.16.1.0/24 -p tcp --dport 51000 -j ACCEPT
+networker@lab21:~/git/RechnernetzePraktikum/RechnernetzePraktikum/src/praktikum4/loesungen> sudo /usr/sbin/iptables -I INPUT -d 172.16.1.0/24 -j DROP
+networker@lab21:~/git/RechnernetzePraktikum/RechnernetzePraktikum/src/praktikum4/loesungen> sudo /usr/sbin/iptables -I OUTPUT -s 172.16.1.0/24 -j DROP
+networker@lab21:~/git/RechnernetzePraktikum/RechnernetzePraktikum/src/praktikum4/loesungen> sudo /usr/sbin/iptables -I INPUT -d 172.16.1.0/24 -p tcp --dport 51000 -j ACCEPT
 networker@lab30:~> ping -c 1 172.16.1.2
 PING 172.16.1.2 (172.16.1.2) 56(84) bytes of data.
 
@@ -45,8 +46,8 @@ Coral
 
 3.c)
 
-networker@lab21:~> sudo /usr/sbin/iptables -I INPUT -s 172.16.1.0/24 -p tcp --syn -j DROP
-networker@lab21:~> sudo /usr/sbin/iptables -I INPUT -s 172.16.1.0/24 -p tcp --tcp-flags SYN,ACK SYN,ACK -j ACCEPT
+networker@lab21:~> sudo /usr/sbin/iptables -I INPUT -d 172.16.1.0/24 -p tcp --syn -j DROP
+networker@lab21:~> sudo /usr/sbin/iptables -I INPUT -d 172.16.1.0/24 -p tcp --tcp-flags SYN,ACK SYN,ACK -j ACCEPT
 networker@lab21:~> socat - tcp-listen:51000
 ^Cnetworker@lab21:~> socat - tcp:lab30:51000
 Hallo?
@@ -62,7 +63,7 @@ Nice
 networker@lab30:~> ^C
 
 3.d)
-networker@lab21:~> sudo /usr/sbin/iptables -I INPUT -s 172.16.1.0/24 -p icmp --icmp-type echo-request -j DROP
+networker@lab21:~> sudo /usr/sbin/iptables -I INPUT -d 172.16.1.0/24 -p icmp --icmp-type echo-request -j DROP
 networker@lab21:~> ping 172.16.1.5 -c 1
 PING 172.16.1.5 (172.16.1.5) 56(84) bytes of data.
 64 bytes from 172.16.1.5: icmp_seq=1 ttl=64 time=0.270 ms
