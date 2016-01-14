@@ -1,0 +1,122 @@
+Aufgabe 3.a)
+ LOG:
+
+networker@lab21:~/git/RechnernetzePraktikum/RechnernetzePraktikum/src/praktikum4/loesungen> ping -c 1 172.16.1.5
+PING 172.16.1.5 (172.16.1.5) 56(84) bytes of data.
+64 bytes from 172.16.1.5: icmp_seq=1 ttl=64 time=0.262 ms
+
+--- 172.16.1.5 ping statistics ---
+1 packets transmitted, 1 received, 0% packet loss, time 0ms
+rtt min/avg/max/mdev = 0.262/0.262/0.262/0.000 ms
+networker@lab21:~/git/RechnernetzePraktikum/RechnernetzePraktikum/src/praktikum4/loesungen> sudo /usr/sbin/iptables -I INPUT -s 172.16.1.0/24 -j DROP
+networker@lab21:~/git/RechnernetzePraktikum/RechnernetzePraktikum/src/praktikum4/loesungen> sudo /usr/sbin/iptables -I OUTPUT -d 172.16.1.0/24 -j DROP
+networker@lab21:~/git/RechnernetzePraktikum/RechnernetzePraktikum/src/praktikum4/loesungen> ping -c 1 172.16.1.5
+PING 172.16.1.5 (172.16.1.5) 56(84) bytes of data.
+ping: sendmsg: Operation not permitted
+
+--- 172.16.1.5 ping statistics ---
+1 packets transmitted, 0 received, 100% packet loss, time 0ms
+
+networker@lab21:~/git/RechnernetzePraktikum/RechnernetzePraktikum/src/praktikum4/loesungen>
+
+Aufgabe 3.b)
+
+networker@lab21:~/git/RechnernetzePraktikum/RechnernetzePraktikum/src/praktikum4/loesungen> sudo /usr/sbin/iptables -I INPUT -s 172.16.1.0/24 -j DROP
+networker@lab21:~/git/RechnernetzePraktikum/RechnernetzePraktikum/src/praktikum4/loesungen> sudo /usr/sbin/iptables -I INPUT -s 172.16.1.0/24 -p tcp --dport 51000 -j ACCEPT
+networker@lab30:~> ping -c 1 172.16.1.2
+PING 172.16.1.2 (172.16.1.2) 56(84) bytes of data.
+
+
+--- 172.16.1.2 ping statistics ---
+1 packets transmitted, 0 received, 100% packet loss, time 0ms
+
+networker@lab21:~> socat - tcp-listen:51000
+Hallo?
+Aha!
+Coral
+networker@lab21:~>
+
+networker@lab30:~> socat - tcp:172.16.1.2:51000
+Hallo?
+Aha!
+Coral
+^Cnetworker@lab30:~>
+
+
+3.c)
+
+networker@lab21:~> sudo /usr/sbin/iptables -I INPUT -s 172.16.1.0/24 -p tcp --syn -j DROP
+networker@lab21:~> sudo /usr/sbin/iptables -I INPUT -s 172.16.1.0/24 -p tcp --tcp-flags SYN,ACK SYN,ACK -j ACCEPT
+networker@lab21:~> socat - tcp-listen:51000
+^Cnetworker@lab21:~> socat - tcp:lab30:51000
+Hallo?
+Super
+Nice
+
+networker@lab30:~> socat - tcp:172.16.1.2:51000
+Hallo?
+^Cnetworker@lab30:~> socat - tcp-listen:51000
+Hallo?
+Super
+Nice
+networker@lab30:~> ^C
+
+3.d)
+networker@lab21:~> sudo /usr/sbin/iptables -I INPUT -s 172.16.1.0/24 -p icmp --icmp-type echo-request -j DROP
+networker@lab21:~> ping 172.16.1.5 -c 1
+PING 172.16.1.5 (172.16.1.5) 56(84) bytes of data.
+64 bytes from 172.16.1.5: icmp_seq=1 ttl=64 time=0.270 ms
+
+--- 172.16.1.5 ping statistics ---
+1 packets transmitted, 1 received, 0% packet loss, time 0ms
+rtt min/avg/max/mdev = 0.270/0.270/0.270/0.000 ms
+
+networker@lab30:~> ping 172.16.1.2 -c 1
+PING 172.16.1.2 (172.16.1.2) 56(84) bytes of data.
+
+--- 172.16.1.2 ping statistics ---
+1 packets transmitted, 0 received, 100% packet loss, time 0ms
+
+4)
+
+Router RNS1:
+
+networker@lab21:~> sudo /sbin/route add -net 192.168.18.0/24 gw 192.168.17.2
+networker@lab21:~> ping 192.168.18.133 -c 1
+PING 192.168.18.133 (192.168.18.133) 56(84) bytes of data.
+64 bytes from 192.168.18.133: icmp_seq=1 ttl=63 time=0.350 ms
+
+--- 192.168.18.133 ping statistics ---
+1 packets transmitted, 1 received, 0% packet loss, time 0ms
+rtt min/avg/max/mdev = 0.350/0.350/0.350/0.000 ms
+
+networker@lab30:~> sudo /sbin/route add -net 192.168.17.0/24 gw 192.168.18.2
+networker@lab30:~> ping 192.168.17.10 -c 1
+PING 192.168.17.10 (192.168.17.10) 56(84) bytes of data.
+64 bytes from 192.168.17.10: icmp_seq=1 ttl=63 time=0.586 ms
+
+--- 192.168.17.10 ping statistics ---
+1 packets transmitted, 1 received, 0% packet loss, time 0ms
+rtt min/avg/max/mdev = 0.586/0.586/0.586/0.000 ms
+
+ISDN-Router:
+networker@lab21:~> ping 192.168.18.133 -c 1 -s 1000
+PING 192.168.18.133 (192.168.18.133) 1000(1028) bytes of data.
+From 192.168.17.1 icmp_seq=1 Frag needed and DF set (mtu = 786)
+
+--- 192.168.18.133 ping statistics ---
+1 packets transmitted, 0 received, +1 errors, 100% packet loss, time 0ms
+
+networker@lab21:~>
+
+networker@lab30:~> sudo /sbin/route add -net 192.168.17.0/24 gw 192.168.18.1
+networker's password:
+networker@lab30:~> ping 192.168.17.10 -c 1 -s 1000
+PING 192.168.17.10 (192.168.17.10) 1000(1028) bytes of data.
+From 192.168.18.1 icmp_seq=1 Frag needed and DF set (mtu = 786)
+
+--- 192.168.17.10 ping statistics ---
+1 packets transmitted, 0 received, +1 errors, 100% packet loss, time 0ms
+
+networker@lab30:~>
+

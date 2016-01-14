@@ -1,1 +1,0 @@
-iptables -A INPUT -s 172.16.1.0/24 -p tcp --syn -j ACCEPT
